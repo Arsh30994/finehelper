@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import AppShell from "../app-shell";
+import AppShell from "../../app-shell";
 import { api } from "@/lib/api";
 import Link from "next/link";
-import { Suspense } from "react";
 
 type RunBundle = {
   id: string;
@@ -89,7 +88,7 @@ function CompareInner() {
 
 export default function ComparePage() {
   return (
-    <Suspense>
+    <Suspense fallback={<p className="p-8 text-sm text-zinc-500">Loading comparison…</p>}>
       <CompareInner />
     </Suspense>
   );
