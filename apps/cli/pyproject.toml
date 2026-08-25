@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "finehelper-cli"
+version = "0.1.0"
+description = "Finehelper CLI (fh)"
+requires-python = ">=3.12"
+dependencies = [
+  "finehelper-core",
+  "httpx>=0.27",
+  "typer>=0.12",
+  "rich>=13.7",
+]
+
+[project.scripts]
+fh = "finehelper_cli.main:app"
+finehelper = "finehelper_cli.main:app"
+
+[tool.setuptools.packages.find]
+include = ["finehelper_cli*"]

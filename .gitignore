@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/
+*.db
+*.db-journal
+
+# Node
+node_modules/
+.next/
+out/
+.turbo/
+
+# Env and secrets
+.env
+.env.local
+.env.*.local
+*.pem
+
+# Local data plane (ephemeral; production uses R2)
+.data/
+.finehelper/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Coverage
+coverage/
+htmlcov/
+.coverage

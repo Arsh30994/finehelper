@@ -1,0 +1,94 @@
+# https://render.com/schema/render.yaml.json
+projects:
+  - name: finehelper
+    environments:
+      - name: production
+        databases:
+          - name: finehelper-db
+            plan: basic-256mb
+            postgresMajorVersion: "16"
+        services:
+          - type: keyvalue
+            name: finehelper-kv
+            plan: starter
+            maxmemoryPolicy: noeviction
+            ipAllowList:
+              - source: 0.0.0.0/0
+                description: allow Render private network and workers
+
+          - type: web
+            name: finehelper-api
+            runtime: python
+            plan: starter
+            region: oregon
+            buildCommand: pip install -e packages/core -e apps/api
+            startCommand: uvicorn finehelper_api.main:app --host 0.0.0.0 --port $PORT
+            healthCheckPath: /healthz
+            preDeployCommand: alembic -c packages/core/alembic.ini upgrade head
+            envVars:
+              - fromGroup: finehelper-secrets
+              - key: DATABASE_URL
+                fromDatabase:
+                  name: finehelper-db
+                  property: connectionString
+              - key: REDIS_URL
+                fromService:
+                  type: keyvalue
+                  name: finehelper-kv
+                  property: connectionString
+              - key: FH_EMBEDDED_WORKER
+                value: "0"
+              - key: WEB_ORIGIN
+                sync: false
+              - key: API_PUBLIC_URL
+                sync: false
+              - key: S3_ENDPOINT_URL
+                sync: false
+              - key: S3_ACCESS_KEY_ID
+                sync: false
+              - key: S3_SECRET_ACCESS_KEY
+                sync: false
+              - key: S3_BUCKET
+                sync: false
+              - key: PYTHONUNBUFFERED
+                value: "1"
+
+          - type: worker
+            name: finehelper-cpu
+            runtime: python
+            plan: starter
+            region: oregon
+            buildCommand: pip install -e packages/core -e apps/api
+            startCommand: python workers/cpu/main.py
+            maxShutdownDelaySeconds: 300
+            envVars:
+              - fromGroup: finehelper-secrets
+              - key: DATABASE_URL
+                fromDatabase:
+                  name: finehelper-db
+                  property: connectionString
+              - key: REDIS_URL
+                fromService:
+                  type: keyvalue
+                  name: finehelper-kv
+                  property: connectionString
+              - key: FH_EMBEDDED_WORKER
+                value: "0"
+              - key: S3_ENDPOINT_URL
+                sync: false
+              - key: S3_ACCESS_KEY_ID
+                sync: false
+              - key: S3_SECRET_ACCESS_KEY
+                sync: false
+              - key: S3_BUCKET
+                sync: false
+              - key: PYTHONUNBUFFERED
+                value: "1"
+
+envVarGroups:
+  - name: finehelper-secrets
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: MASTER_KEY
+        generateValue: true

@@ -1,0 +1,10 @@
+{"messages":[{"role":"system","content":"You are a concise support agent for Finehelper."},{"role":"user","content":"How do I upload a dataset?"},{"role":"assistant","content":"Use the project page Upload JSONL control, or run `fh dataset upload ./data.jsonl --name support-v1`."}]}
+{"messages":[{"role":"user","content":"What backends can I train with?"},{"role":"assistant","content":"OpenAI managed fine-tunes, Modal QLoRA, a local GPU runner, and dry_run for local demos."}]}
+{"messages":[{"role":"user","content":"When can I deploy?"},{"role":"assistant","content":"After an eval report on that run passes the project's quality gate, unless you explicitly override."}]}
+{"messages":[{"role":"user","content":"Where are checkpoints stored?"},{"role":"assistant","content":"Object storage (Cloudflare R2 in production, .data/storage locally). The API disk is ephemeral."}]}
+{"messages":[{"role":"user","content":"How do I watch a job?"},{"role":"assistant","content":"Open the job page in the dashboard or run `fh logs <job_id>`."}]}
+{"messages":[{"role":"user","content":"What is a dataset version?"},{"role":"assistant","content":"An immutable SHA-256 snapshot of canonical chat JSONL plus split stats. Training always pins a version."}]}
+{"messages":[{"role":"user","content":"Can I use ShareGPT files?"},{"role":"assistant","content":"Yes. Prepare converts ShareGPT, Alpaca, CSV, and OpenAI chat JSONL into the canonical messages format."}]}
+{"messages":[{"role":"user","content":"How do I chat with a finished run?"},{"role":"assistant","content":"Use the Playground, `fh chat --run <id> -m hello`, or POST /v1/chat/completions with your org API key."}]}
+{"messages":[{"role":"user","content":"What if OpenAI rejects my file?"},{"role":"assistant","content":"Download the version error report, fix invalid rows, and upload a new version. Fine-tunes never mutate a previous digest."}]}
+{"messages":[{"role":"user","content":"Do you support Anthropic fine-tunes?"},{"role":"assistant","content":"Not as a training backend in v1. Claude can still be used as an eval judge."}]}
