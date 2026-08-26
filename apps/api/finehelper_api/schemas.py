@@ -11,14 +11,40 @@ from finehelper_core.models import MongoModel
 
 class SignupIn(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=8)
-    name: str
-    org_name: str
+    password: str = Field(min_length=10, max_length=128)
+    name: str = Field(min_length=1, max_length=120)
+    org_name: str = Field(min_length=1, max_length=120)
 
 
 class LoginIn(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(min_length=1, max_length=128)
+
+
+class PhoneIn(BaseModel):
+    phone: str = Field(min_length=10, max_length=15)
+
+
+class OtpVerifyIn(BaseModel):
+    code: str = Field(min_length=4, max_length=8)
+
+
+class BiometricChallengeOut(BaseModel):
+    challenge: str
+    rp_id: str = "localhost"
+    user_id: str
+    biometric_enabled: bool = False
+
+
+class BiometricRegisterIn(BaseModel):
+    credential_id: str = Field(min_length=8, max_length=512)
+    public_key: str = Field(min_length=8, max_length=4096)
+    demo: bool = False
+
+
+class BiometricUnlockIn(BaseModel):
+    credential_id: str | None = None
+    demo: bool = False
 
 
 class TokenOut(BaseModel):
@@ -142,7 +168,68 @@ class HeartbeatIn(BaseModel):
     adapter_uri: str | None = None
 
 
-SECRET_FIELDS = {"password_hash", "encrypted_secret", "key_hash", "token_hash"}
+class TrustConsentIn(BaseModel):
+    scopes: list[str] | None = None
+
+
+class TrustOnboardIn(BaseModel):
+    upi_id: str = Field(min_length=3, max_length=80)
+    bank_name: str = "Demo Bank"
+    bank_account_last4: str = Field(default="4242", min_length=4, max_length=4)
+    occupation: str = "kirana"
+
+
+class TrustSyntheticIn(BaseModel):
+    months: int = Field(default=6, ge=3, le=12)
+    seed: int | None = None
+    occupation: str | None = None
+    quality: str = Field(default="good")  # thin | fair | good | strong
+
+
+class TrustExplainIn(BaseModel):
+    lang: str = "en"
+
+
+class TrustScanIn(BaseModel):
+    """Raw QR payload from camera/file — never settles real money."""
+
+    raw: str = Field(min_length=1, max_length=2048)
+    amount_override: float | None = Field(default=None, ge=0, le=100000)
+
+
+class TrustBootstrapIn(BaseModel):
+    """Fill assumed synthetic profile + signals + score for demos."""
+
+    months: int = Field(default=6, ge=3, le=12)
+    seed: int | None = 30994
+    occupation: str = "kirana"
+    quality: str = "good"
+    force: bool = False
+    lang: str = "en"
+
+
+class AgentChatIn(BaseModel):
+    message: str = Field(min_length=1, max_length=1000)
+    lang: str = "auto"  # auto | en | hi — auto follows speaker (EN/HI/Hinglish)
+    force_refresh: bool = False
+
+
+class AgentTtsIn(BaseModel):
+    text: str = Field(min_length=1, max_length=2400)
+    language_code: str | None = None  # e.g. hi-IN / en-IN; omit to auto-detect
+    speaker: str | None = None
+
+
+SECRET_FIELDS = {
+    "password_hash",
+    "encrypted_secret",
+    "key_hash",
+    "token_hash",
+    "email_otp_hash",
+    "phone_otp_hash",
+    "webauthn_public_key",
+    "webauthn_challenge",
+}
 
 
 def doc_to_dict(obj: MongoModel | dict[str, Any], extra: dict[str, Any] | None = None) -> dict[str, Any]:

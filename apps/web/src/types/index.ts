@@ -1,4 +1,4 @@
-/** Shared Finehelper dashboard types (mirrors API documents). */
+/** TrustMesh frontend types (mirrors API). */
 
 export type Org = {
   id: string;
@@ -10,6 +10,16 @@ export type User = {
   id: string;
   email: string;
   name: string;
+  phone?: string | null;
+  email_verified?: boolean;
+  phone_verified?: boolean;
+  biometric_enabled?: boolean;
+  security?: {
+    email_verified: boolean;
+    phone_verified: boolean;
+    biometric_enabled: boolean;
+    phone?: string | null;
+  };
 };
 
 export type AuthToken = {
@@ -26,111 +36,79 @@ export type Me = {
   via: string;
 };
 
-export type Project = {
+export type TrustProfile = {
+  id?: string;
+  user_id?: string;
+  upi_id?: string | null;
+  bank_name?: string | null;
+  bank_account_last4?: string | null;
+  consent_at?: string | null;
+  consent_scopes?: string[];
+  occupation?: string | null;
+};
+
+export type TrustScore = {
   id: string;
-  name: string;
-  slug: string;
-  task_type: string;
-  default_backend: string;
-  default_base_model: string;
-  quality_gate?: Record<string, unknown> | null;
+  score: number;
+  factors: Record<string, number>;
+  eligibility_min: number;
+  eligibility_max: number;
+  explanation?: string | null;
+  explanation_lang?: string;
+  model_version?: string;
   created_at?: string;
+  score_hash?: string | null;
+  signals_root?: string | null;
+  chain_network?: string | null;
+  chain_tx_hash?: string | null;
+  chain_block?: number | null;
+  chain_explorer_url?: string | null;
+  chain_mode?: string | null;
 };
 
-export type Dataset = {
+export type TrustAttestVerify = {
+  ok: boolean;
+  hash_match: boolean;
+  score_hash?: string;
+  chain_tx_hash?: string | null;
+  network?: string;
+  explorer_url?: string | null;
+  found_in_ledger?: boolean;
+  note?: string;
+  demo?: boolean;
+};
+
+export type TrustSignalsSummary = {
+  txn_count: number;
+  bill_count: number;
+  recharge_count: number;
+  peers: { name: string; upi: string; direction?: string; months_known?: number; txn_count?: number }[];
+  merchants: { name: string; count?: number; txn_count?: number; spend_total?: number; category?: string }[];
+  recent_txns: { at: string; amount: number; direction: string; counterparty?: string; note?: string }[];
+  bills: { name?: string; provider?: string; kind?: string; amount: number; on_time: boolean; at?: string }[];
+  recharges: { amount: number; at: string; operator?: string }[];
+};
+
+export type TrustDashboard = {
+  profile: TrustProfile | null;
+  score: TrustScore | null;
+  signals_summary: TrustSignalsSummary | null;
+  demo?: boolean;
+};
+
+export type TrustIngestResult = {
   id: string;
-  name: string;
-  description?: string | null;
-  project_id: string;
+  months: number;
+  txn_count: number;
+  bill_count: number;
+  recharge_count: number;
+  peer_count: number;
+  merchants: { name: string }[];
+  synthetic: boolean;
 };
 
-export type DatasetVersion = {
-  id: string;
-  status: string;
-  row_count: number;
-  content_digest: string;
-  stats?: { approx_tokens_p50?: number } | null;
-  split_map?: Record<string, unknown> | null;
-};
-
-export type DatasetDetail = Dataset & {
-  versions: DatasetVersion[];
-};
-
-export type Job = {
-  id: string;
-  type: string;
-  status: string;
-  project_id?: string | null;
-  created_at?: string;
-  error?: string | null;
-  result?: unknown;
-};
-
-export type JobEvent = {
-  id: string;
-  kind: string;
-  message: string;
-  created_at: string;
-  data?: Record<string, unknown> | null;
-};
-
-export type EvalRow = {
-  id: string;
-  passed: boolean;
-  metrics: Record<string, number>;
-};
-
-export type Run = {
-  id: string;
-  backend: string;
-  base_model: string;
-  provider_model_id?: string | null;
-  adapter_uri?: string | null;
-  metrics?: Record<string, number> | null;
-  hyperparams?: Record<string, unknown> | null;
-  dataset_version_id?: string;
-  job_id?: string;
-  project_id?: string;
-  created_at?: string;
-  evals?: EvalRow[];
-};
-
-export type Deployment = {
-  id: string;
-  name: string;
-  backend: string;
-  run_id: string;
-  project_id?: string;
-  target?: Record<string, unknown>;
-};
-
-export type Credential = {
-  id: string;
-  provider: string;
-  last4: string;
-};
-
-export type ApiKey = {
-  id: string;
-  name: string;
-  prefix: string;
-};
-
-export type JobAccepted = {
-  job_id: string;
-  status: string;
-};
-
-export type UploadInit = {
-  key: string;
-  upload_url: string;
-  method: string;
-};
-
-export type ChatCompletion = {
-  id: string;
-  object: string;
-  model?: string;
-  choices: { index: number; message: { role: string; content: string }; finish_reason: string }[];
+export type TrustExplainResult = {
+  explanation: string;
+  lang: string;
+  score_id?: string;
 };

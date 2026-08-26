@@ -1,93 +1,101 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { getOrg } from "@/api";
-import type { Org } from "@/types";
+import { Shield, Fingerprint, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/components/providers/auth-provider";
-import { FadeUp } from "@/components/motion";
-import { MetricRow, PageHeader, btnGhostClass, btnPrimaryClass } from "@/components/ui";
+import { useTrustDashboard } from "@/hooks/use-trust-dashboard";
+import { FadeUp, Skeleton } from "@/components/motion";
+import { btnAccentClass, btnGhostClass, btnPrimaryClass } from "@/components/ui";
 
 export default function ProfilePage() {
-  const { me: profile } = useAuth();
-  const [org, setOrg] = useState<(Org & { role?: string; member_count?: number }) | null>(null);
+  const { me: profile, signOut } = useAuth();
+  const { data, loading } = useTrustDashboard({ autofill: true });
+  const trust = data?.profile;
+  const sec = profile?.user?.security;
 
-  useEffect(() => {
-    getOrg().then(setOrg).catch(() => setOrg(null));
-  }, []);
+  if (loading) return <Skeleton className="m-4 h-64" />;
 
   return (
-    <>
-      <PageHeader title="Profile" description="Your identity inside this Finehelper organization." />
+    <div className="px-4 pb-8 pt-4">
+      <FadeUp className="space-y-5">
+        <div className="flex items-center gap-4">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-wine-500 text-2xl font-semibold text-white">
+            {(profile?.user?.name || "?").slice(0, 1).toUpperCase()}
+          </div>
+          <div>
+            <h1 className="text-2xl font-semibold text-ink-800">{profile?.user?.name}</h1>
+            <p className="text-sm text-zinc-500">{profile?.user?.email}</p>
+          </div>
+        </div>
 
-      <FadeUp>
-        <div className="fh-card overflow-hidden">
-          <div className="grid gap-0 md:grid-cols-[1fr_1.1fr]">
-            <div className="border-b border-mist-200 p-6 md:border-b-0 md:border-r">
-              <div className="flex items-center gap-4">
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-wine-400 to-wine-700 font-display text-3xl text-white shadow-soft">
-                  {(profile?.user?.name || "?").slice(0, 1).toUpperCase()}
-                </div>
-                <div>
-                  <span className="inline-flex rounded-full bg-wine-500 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
-                    Verified session
-                  </span>
-                  <h2 className="mt-2 font-display text-3xl text-wine-700">{profile?.user?.name || "—"}</h2>
-                  <p className="text-sm text-zinc-500">{profile?.user?.email}</p>
-                </div>
-              </div>
-              <dl className="mt-8 grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <dt className="text-[11px] uppercase tracking-wide text-zinc-400">User id</dt>
-                  <dd className="mt-1 font-mono text-xs text-wine-600">{profile?.user?.id?.slice(0, 12) || "—"}</dd>
-                </div>
-                <div>
-                  <dt className="text-[11px] uppercase tracking-wide text-zinc-400">Role</dt>
-                  <dd className="mt-1 capitalize text-wine-600">{profile?.role || "—"}</dd>
-                </div>
-                <div>
-                  <dt className="text-[11px] uppercase tracking-wide text-zinc-400">Auth via</dt>
-                  <dd className="mt-1 text-wine-600">{profile?.via || "—"}</dd>
-                </div>
-                <div>
-                  <dt className="text-[11px] uppercase tracking-wide text-zinc-400">Members</dt>
-                  <dd className="mt-1 text-wine-600">{org?.member_count ?? "—"}</dd>
-                </div>
-              </dl>
-            </div>
+        <div className="rounded-3xl border border-mist-300 bg-mist-100 p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <Shield className="h-4 w-4 text-wine-500" />
+            <h2 className="font-semibold text-ink-800">Security</h2>
+          </div>
+          <ul className="space-y-2 text-sm">
+            <li className="flex items-center justify-between">
+              <span className="text-zinc-400">Email</span>
+              <span className="flex items-center gap-1 text-xs">
+                {sec?.email_verified || profile?.user?.email_verified ? (
+                  <>
+                    <CheckCircle2 className="h-3.5 w-3.5 text-lagoon-500" /> Verified
+                  </>
+                ) : (
+                  "Not verified"
+                )}
+              </span>
+            </li>
+            <li className="flex items-center justify-between">
+              <span className="text-zinc-400">Phone</span>
+              <span className="flex items-center gap-1 text-xs">
+                {sec?.phone_verified || profile?.user?.phone_verified ? (
+                  <>
+                    <CheckCircle2 className="h-3.5 w-3.5 text-lagoon-500" /> Verified
+                  </>
+                ) : (
+                  "Not verified"
+                )}
+              </span>
+            </li>
+            <li className="flex items-center justify-between">
+              <span className="text-zinc-400">Fingerprint</span>
+              <span className="flex items-center gap-1 text-xs">
+                {sec?.biometric_enabled || profile?.user?.biometric_enabled ? (
+                  <>
+                    <Fingerprint className="h-3.5 w-3.5 text-wine-500" /> On
+                  </>
+                ) : (
+                  "Off"
+                )}
+              </span>
+            </li>
+          </ul>
+          <Link href="/app/security" className={`${btnPrimaryClass} mt-4 w-full`}>
+            Open security
+          </Link>
+        </div>
 
-            <div className="p-6">
-              <h3 className="font-display text-2xl text-wine-600">Organization</h3>
-              <p className="mt-1 text-sm text-zinc-500">Workspace credentials for training and deploy.</p>
-              <div className="mt-4">
-                <MetricRow
-                  label="Org name"
-                  hint="Display name"
-                  value={<span className="font-display text-xl">{org?.name || profile?.org?.name || "—"}</span>}
-                />
-                <MetricRow
-                  label="Slug"
-                  hint="URL-safe identifier"
-                  value={<span className="font-mono text-lg">{org?.slug || profile?.org?.slug || "—"}</span>}
-                />
-                <MetricRow
-                  label="Your role"
-                  hint="Permissions in this org"
-                  value={<span className="capitalize">{org?.role || profile?.role || "—"}</span>}
-                />
-              </div>
-              <div className="mt-6 flex flex-wrap gap-2">
-                <Link href="/app/settings" className={btnPrimaryClass}>
-                  Open settings
-                </Link>
-                <Link href="/app" className={btnGhostClass}>
-                  Back to dashboard
-                </Link>
-              </div>
-            </div>
+        <div className="rounded-3xl border border-mist-300 p-4 text-sm">
+          <p className="text-xs uppercase tracking-wide text-zinc-400">Linked demo UPI</p>
+          <p className="mt-1 font-medium text-ink-800">{trust?.upi_id || "Not linked"}</p>
+          <p className="mt-1 text-zinc-500">
+            {trust?.bank_name || "Demo Bank"}
+            {trust?.bank_account_last4 ? ` ····${trust.bank_account_last4}` : ""}
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link href="/app/onboard" className={btnAccentClass}>
+              Update onboarding
+            </Link>
+            <Link href="/app/score" className={btnAccentClass}>
+              Trust Score
+            </Link>
+            <button type="button" className={btnGhostClass} onClick={signOut}>
+              Sign out
+            </button>
           </div>
         </div>
       </FadeUp>
-    </>
+    </div>
   );
 }

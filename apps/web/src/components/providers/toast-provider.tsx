@@ -67,10 +67,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               transition={{ type: "spring", stiffness: 420, damping: 28 }}
               className={`pointer-events-auto rounded-2xl border px-4 py-3 text-sm shadow-soft backdrop-blur ${
                 t.kind === "success"
-                  ? "border-lagoon-300 bg-lagoon-100/95 text-wine-800"
+                  ? "border-lagoon-400/40 bg-lagoon-100/95 text-lagoon-300"
                   : t.kind === "error"
-                    ? "border-red-200 bg-red-50/95 text-red-800"
-                    : "border-mist-300 bg-white/95 text-wine-700"
+                    ? "border-red-500/40 bg-red-950/90 text-red-300"
+                    : "border-mist-300 bg-mist-100/95 text-ink-800"
               }`}
             >
               {t.message}

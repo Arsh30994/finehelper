@@ -3,10 +3,10 @@ import { cn } from "@/lib/utils";
 export function StatusBadge({ status }: { status: string }) {
   const tone =
     status === "succeeded" || status === "ready" || status === "passed" || status === "live"
-      ? "bg-lagoon-100 text-wine-700"
+      ? "bg-lagoon-100 text-lagoon-300"
       : status === "failed" || status === "cancelled"
-        ? "bg-red-50 text-red-700"
-        : "bg-mist-200 text-zinc-600";
+        ? "bg-red-950 text-red-300"
+        : "bg-mist-200 text-zinc-400";
   return (
     <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium capitalize", tone)}>
       {status}
@@ -30,7 +30,7 @@ export function PageHeader({
   return (
     <div className="mb-8 flex flex-wrap items-end justify-between gap-4 animate-fade-up">
       <div>
-        <h1 className="font-display text-3xl tracking-tight text-wine-600">{title}</h1>
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-white">{title}</h1>
         {description ? <p className="mt-1.5 max-w-xl text-sm text-zinc-500">{description}</p> : null}
       </div>
       {actions}
@@ -40,7 +40,7 @@ export function PageHeader({
 
 export function ErrorText({ children }: { children?: React.ReactNode }) {
   if (!children) return null;
-  return <p className="mb-4 break-all text-xs text-red-600">{children}</p>;
+  return <p className="mb-4 break-all text-xs text-red-400">{children}</p>;
 }
 
 export function MonoId({ id, chars = 8 }: { id: string; chars?: number }) {
@@ -53,7 +53,7 @@ export function Panel({ children, className = "" }: { children: React.ReactNode;
 
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="block text-xs font-semibold text-wine-700">
+    <label className="block text-xs font-semibold text-zinc-300">
       {label}
       <div className="mt-1.5">{children}</div>
     </label>

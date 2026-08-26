@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import os
+import secrets
 from datetime import datetime, timezone
 from typing import Annotated
 
@@ -15,6 +17,17 @@ from finehelper_core.db.mongo import Mongo
 from finehelper_core.settings import Settings
 
 bearer = HTTPBearer(auto_error=False)
+
+_DUMMY_HASH: str | None = None
+
+
+def _dummy_password_hash() -> str:
+    global _DUMMY_HASH
+    if _DUMMY_HASH is None:
+        salt = b"\x00" * 16
+        dk = hashlib.scrypt(b"timing-safe-dummy", salt=salt, n=2**14, r=8, p=1, maxmem=64 * 1024 * 1024)
+        _DUMMY_HASH = f"scrypt${salt.hex()}${dk.hex()}"
+    return _DUMMY_HASH
 
 
 class AuthContext:
@@ -57,6 +70,8 @@ async def get_auth(
     if creds is None or not creds.credentials:
         raise HTTPException(401, "missing bearer token")
     token = creds.credentials
+    if len(token) > 4096:
+        raise HTTPException(401, "invalid session")
     now = datetime.now(timezone.utc)
 
     if token.startswith("fh_live_"):
@@ -79,10 +94,11 @@ async def get_auth(
     user = await auth_model.find_user_by_id(db, str(payload.get("sub")))
     if not user:
         raise HTTPException(401, "invalid session")
+    claim_org = str(payload.get("org_id") or "")
     memberships = await auth_model.list_memberships_for_user(db, user.id)
     if not memberships:
         raise HTTPException(403, "user has no organization")
-    wanted = x_org_id or str(payload.get("org_id") or "")
+    wanted = x_org_id or claim_org
     if wanted:
         membership = next((m for m in memberships if m.org_id == wanted), None)
         if not membership:
@@ -110,14 +126,36 @@ def require_role(*roles: str):
 
 def hash_password(password: str) -> str:
     salt = os.urandom(16)
-    dk = hashlib.scrypt(password.encode("utf-8"), salt=salt, n=2**14, r=8, p=1)
+    dk = hashlib.scrypt(password.encode("utf-8"), salt=salt, n=2**14, r=8, p=1, maxmem=64 * 1024 * 1024)
     return f"scrypt${salt.hex()}${dk.hex()}"
 
 
 def verify_password(password: str, hashed: str) -> bool:
     try:
-        _, salt_hex, dk_hex = hashed.split("$", 2)
-        dk = hashlib.scrypt(password.encode("utf-8"), salt=bytes.fromhex(salt_hex), n=2**14, r=8, p=1)
-        return hashlib.compare_digest(dk.hex(), dk_hex)
+        scheme, salt_hex, dk_hex = hashed.split("$", 2)
+        if scheme != "scrypt":
+            return False
+        dk = hashlib.scrypt(
+            password.encode("utf-8"),
+            salt=bytes.fromhex(salt_hex),
+            n=2**14,
+            r=8,
+            p=1,
+            maxmem=64 * 1024 * 1024,
+        )
+        return hmac.compare_digest(dk, bytes.fromhex(dk_hex))
     except Exception:
         return False
+
+
+def verify_password_timing_safe(password: str, hashed: str | None) -> bool:
+    """Always run scrypt so missing users don't reveal themselves via latency."""
+    target = hashed if hashed else _dummy_password_hash()
+    ok = verify_password(password, target)
+    if not hashed:
+        return False
+    return ok
+
+
+def new_csrf_token() -> str:
+    return secrets.token_urlsafe(24)

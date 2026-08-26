@@ -1,85 +1,96 @@
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --fh-bg: #f4f2f7;
-  --fh-surface: #ffffff;
-  --fh-wine: #7a4440;
-  --fh-wine-deep: #542e2c;
-  --fh-lagoon: #a8cfd1;
-  --fh-text: #2a2222;
-  --fh-muted: #7a7278;
-  --fh-line: #e4dde8;
-  --background: #f4f2f7;
-  --foreground: #2a2222;
-  --card: #ffffff;
-  --card-foreground: #2a2222;
-  --primary: #7a4440;
-  --primary-foreground: #ffffff;
-  --secondary: #e8f4f5;
-  --secondary-foreground: #2a2222;
-  --muted: #ebe7f0;
-  --muted-foreground: #7a7278;
-  --accent: #a8cfd1;
-  --accent-foreground: #1f3335;
-  --destructive: #b42318;
-  --border: #e4dde8;
-  --input: #e4dde8;
-  --ring: #7a4440;
+  --fh-bg: #080808;
+  --fh-surface: #111111;
+  --fh-wine: #c29d6d;
+  --fh-wine-deep: #a98455;
+  --fh-lagoon: #4a7c59;
+  --fh-text: #e8e8e8;
+  --fh-muted: #9a9a9a;
+  --fh-line: #2c2c2c;
+  --background: #080808;
+  --foreground: #e8e8e8;
+  --card: #111111;
+  --card-foreground: #e8e8e8;
+  --primary: #c29d6d;
+  --primary-foreground: #111111;
+  --secondary: #1a1a1a;
+  --secondary-foreground: #e8e8e8;
+  --muted: #1a1a1a;
+  --muted-foreground: #9a9a9a;
+  --accent: #c29d6d;
+  --accent-foreground: #111111;
+  --destructive: #d16b6b;
+  --border: #2c2c2c;
+  --input: #1e1e1e;
+  --ring: #c29d6d;
   --radius: 1rem;
 }
 
 html,
 body {
-  background: var(--fh-bg);
+  background: #080808;
   color: var(--fh-text);
   min-height: 100%;
 }
 
 body {
-  background-image:
-    radial-gradient(1200px 600px at 10% -10%, rgba(168, 207, 209, 0.28), transparent 55%),
-    radial-gradient(900px 500px at 100% 0%, rgba(122, 68, 64, 0.08), transparent 50%),
-    linear-gradient(180deg, #f7f5fa 0%, #f1eef5 100%);
+  background:
+    radial-gradient(ellipse 55% 40% at 88% 0%, rgba(194, 157, 109, 0.12), transparent 55%),
+    radial-gradient(ellipse 40% 30% at 10% 80%, rgba(194, 157, 109, 0.04), transparent 50%),
+    #080808;
   background-attachment: fixed;
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #d4ccd8 transparent;
+  scrollbar-color: #3a3a3a transparent;
 }
 
 ::selection {
-  background: #a8cfd1;
-  color: #1f3335;
+  background: rgba(194, 157, 109, 0.28);
+  color: #fff;
 }
 
 @layer utilities {
   .fh-mesh {
-    background-image:
-      radial-gradient(circle at 20% 20%, rgba(168, 207, 209, 0.35), transparent 40%),
-      radial-gradient(circle at 80% 0%, rgba(122, 68, 64, 0.12), transparent 35%),
-      linear-gradient(160deg, #f8f6fb, #efeaf4);
+    background:
+      radial-gradient(ellipse 60% 50% at 80% 0%, rgba(194, 157, 109, 0.1), transparent 55%),
+      linear-gradient(180deg, #0c0c0c 0%, #080808 100%);
+  }
+  .fh-horizon {
+    background:
+      radial-gradient(ellipse 70% 45% at 90% -5%, rgba(194, 157, 109, 0.16), transparent 50%),
+      #080808;
   }
   .fh-card {
-    @apply bg-white/90 border border-mist-300/80 rounded-2xl shadow-lift backdrop-blur-sm;
+    @apply rounded-2xl border border-white/[0.06] bg-gradient-to-b from-[#161616] to-[#111111] shadow-soft;
+  }
+  .fh-glass {
+    @apply rounded-2xl border border-white/[0.08] bg-white/[0.03] shadow-soft backdrop-blur-md;
   }
   .fh-input {
-    @apply w-full rounded-xl border border-mist-300 bg-white px-3.5 py-2.5 text-sm text-wine-800 placeholder:text-zinc-400 outline-none transition focus:border-wine-400 focus:ring-2 focus:ring-lagoon-200;
+    @apply w-full rounded-xl border border-white/[0.08] bg-[#1e1e1e] px-4 py-3 text-sm text-ink-800 placeholder:text-zinc-600 outline-none transition focus:border-wine-500/50 focus:ring-1 focus:ring-wine-500/30;
   }
   .fh-btn {
     @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition active:scale-[0.98] disabled:opacity-60;
   }
   .fh-btn-primary {
-    @apply fh-btn bg-wine-500 text-white hover:bg-wine-600 shadow-soft;
+    @apply fh-btn bg-gradient-to-r from-[#2a2a2a] via-[#5c4a32] to-wine-500 text-white shadow-soft hover:brightness-110;
   }
   .fh-btn-accent {
-    @apply fh-btn bg-lagoon-300 text-wine-800 hover:bg-lagoon-400;
+    @apply fh-btn border border-white/[0.08] bg-[#1a1a1a] text-ink-800 hover:border-wine-500/35 hover:bg-[#222];
   }
   .fh-btn-ghost {
-    @apply fh-btn border border-mist-300 bg-white/70 text-wine-700 hover:bg-mist-100;
+    @apply fh-btn border border-white/[0.1] bg-transparent text-ink-800 hover:bg-white/[0.04];
+  }
+  .gpay-tile {
+    @apply flex aspect-square flex-col items-center justify-center gap-2 rounded-2xl border border-white/[0.06] bg-[#161616] text-center transition hover:border-wine-500/30 hover:bg-[#1c1c1c] active:scale-[0.97];
+  }
+  .gpay-chip {
+    @apply inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/[0.08] bg-[#161616] px-3 py-1.5 text-xs font-medium text-ink-700;
   }
 }
