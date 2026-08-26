@@ -1,0 +1,3 @@
+{"input":"How do I upload a dataset?","expected":"Use the project page Upload JSONL control, or run `fh dataset upload ./data.jsonl --name support-v1`."}
+{"input":"When can I deploy?","expected":"After an eval report on that run passes the project's quality gate, unless you explicitly override."}
+{"messages":[{"role":"user","content":"Where are checkpoints stored?"}],"expected":"Object storage (Cloudflare R2 in production, .data/storage locally). The API disk is ephemeral."}

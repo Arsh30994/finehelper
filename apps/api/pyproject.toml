@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "finehelper-api"
+version = "0.1.0"
+description = "Finehelper control-plane API"
+requires-python = ">=3.12"
+dependencies = [
+  "finehelper-core",
+  "fastapi>=0.111",
+  "uvicorn[standard]>=0.30",
+  "sse-starlette>=2.1",
+]
+
+[tool.setuptools.packages.find]
+include = ["finehelper_api*"]
+
+[tool.uv.sources]
+finehelper-core = { path = "../../packages/core", editable = true }

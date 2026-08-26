@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-geist: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+}
+
+html,
+body {
+  background: #0c0d0b;
+  color: #ece7dc;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2a2b22 transparent;
+}
+
+::selection {
+  background: #b56f28;
+  color: #0c0d0b;
+}

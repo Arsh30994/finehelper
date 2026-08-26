@@ -1,0 +1,25 @@
+project: support-bot
+dataset:
+  path: examples/support.jsonl
+  format: openai-chat
+  prepare:
+    dedupe: true
+    max_seq_len: 4096
+    split:
+      train: 0.9
+      val: 0.1
+train:
+  backend: dry_run
+  base_model: gpt-4.1-mini
+  hyperparams:
+    n_epochs: 1
+eval:
+  suite: examples/golden.jsonl
+  metrics:
+    - exact_match
+  gate:
+    metric: exact_match
+    min: 0.5
+deploy:
+  name: support-bot-prod
+  when: gate_passed
