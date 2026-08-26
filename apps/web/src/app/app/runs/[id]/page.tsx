@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import AppShell from "../../app-shell";
-import { api } from "@/lib/api";
+import { createDeployment, getRun, startEval } from "@/api";
 import Link from "next/link";
 
 type EvalRow = { id: string; passed: boolean; metrics: Record<string, number> };
@@ -27,7 +27,7 @@ export default function RunPage() {
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
-    api<Run>(`/v1/runs/${id}`).then(setRun).catch((e) => setMsg(String(e.message || e)));
+    getRun(id).then(setRun).catch((e) => setMsg(String(e.message || e)));
   }, [id]);
 
   async function runEval(e: FormEvent<HTMLFormElement>) {
@@ -41,24 +41,18 @@ export default function RunPage() {
           .split("\n")
           .filter(Boolean)
           .map((l) => JSON.parse(l));
-    const job = await api<{ job_id: string }>("/v1/evals", {
-      method: "POST",
-      body: JSON.stringify({
-        run_id: id,
-        suite_inline: items,
-        metrics: ["exact_match"],
-        gate: { metric: "exact_match", min: Number(fd.get("min") || 0.8) },
-      }),
+    const job = await startEval({
+      run_id: id,
+      suite_inline: items,
+      metrics: ["exact_match"],
+      gate: { metric: "exact_match", min: Number(fd.get("min") || 0.8) },
     });
     setMsg(`eval job ${job.job_id}`);
     router.push(`/app/jobs/${job.job_id}`);
   }
 
   async function deploy() {
-    const job = await api<{ job_id: string }>("/v1/deployments", {
-      method: "POST",
-      body: JSON.stringify({ run_id: id, name: "prod" }),
-    });
+    const job = await createDeployment({ run_id: id, name: "prod" });
     router.push(`/app/jobs/${job.job_id}`);
   }
 

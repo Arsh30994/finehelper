@@ -1,19 +1,17 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from typing import Annotated, Any
-from uuid import UUID
-
 import hashlib
 import os
+from datetime import datetime, timezone
+from typing import Annotated
 
 from fastapi import Depends, Header, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy import select, text
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from finehelper_api.jwt import JwtError, decode_access_token
 from finehelper_core.crypto import hash_token
-from finehelper_core.db.models import ApiKey, Membership, Org, Session, User
+from finehelper_core.db.mongo import Mongo
+from finehelper_core.models import ApiKey, Membership, Org, User
 from finehelper_core.settings import Settings
 
 bearer = HTTPBearer(auto_error=False)
@@ -27,43 +25,32 @@ class AuthContext:
         self.via = via
 
     @property
-    def org_id(self) -> UUID:
+    def org_id(self) -> str:
         return self.org.id
 
     @property
-    def user_id(self) -> UUID:
+    def user_id(self) -> str:
         return self.user.id
 
 
-async def _apply_org_rls(session: AsyncSession, org_id: UUID) -> None:
-    bind = session.get_bind()
-    dialect = getattr(getattr(bind, "dialect", None), "name", None)
-    if dialect != "postgresql":
-        return
-    await session.execute(text("SELECT set_config('app.current_org_id', :oid, true)"), {"oid": str(org_id)})
+async def get_db(request: Request) -> Mongo:
+    return request.app.state.db
 
 
-async def get_session(request: Request) -> AsyncSession:
-    factory: async_sessionmaker[AsyncSession] = request.app.state.session_factory
-    async with factory() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
-
-
-SessionDep = Annotated[AsyncSession, Depends(get_session)]
+DbDep = Annotated[Mongo, Depends(get_db)]
 
 
 def get_settings_dep(request: Request) -> Settings:
     return request.app.state.settings
 
 
+SettingsDep = Annotated[Settings, Depends(get_settings_dep)]
+
+
 async def get_auth(
     request: Request,
-    session: SessionDep,
+    db: DbDep,
+    settings: SettingsDep,
     creds: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)],
     x_org_id: Annotated[str | None, Header()] = None,
 ) -> AuthContext:
@@ -73,48 +60,48 @@ async def get_auth(
     now = datetime.now(timezone.utc)
 
     if token.startswith("fh_live_"):
-        key = await session.scalar(select(ApiKey).where(ApiKey.key_hash == hash_token(token), ApiKey.revoked_at.is_(None)))
+        key = ApiKey.from_mongo(
+            await db.api_keys.find_one({"key_hash": hash_token(token), "revoked_at": None})
+        )
         if not key:
             raise HTTPException(401, "invalid api key")
         key.last_used_at = now
-        user = await session.get(User, key.user_id)
-        org = await session.get(Org, key.org_id)
-        membership = await session.scalar(
-            select(Membership).where(Membership.org_id == key.org_id, Membership.user_id == key.user_id)
+        await db.save(db.api_keys, key)
+        user = User.from_mongo(await db.users.find_one({"_id": key.user_id}))
+        org = Org.from_mongo(await db.orgs.find_one({"_id": key.org_id}))
+        membership = Membership.from_mongo(
+            await db.memberships.find_one({"org_id": key.org_id, "user_id": key.user_id})
         )
         if not user or not org or not membership or org.deleted_at:
             raise HTTPException(401, "invalid api key")
-        await _apply_org_rls(session, org.id)
         return AuthContext(user, org, membership, "api_key")
 
-    sess = await session.scalar(select(Session).where(Session.token_hash == hash_token(token)))
-    expires = sess.expires_at if sess else None
-    if expires is not None and expires.tzinfo is None:
-        expires = expires.replace(tzinfo=timezone.utc)
-    if not sess or expires is None or expires < now:
-        raise HTTPException(401, "invalid session")
-    user = await session.get(User, sess.user_id)
+    try:
+        payload = decode_access_token(token, settings.secret_key)
+    except JwtError:
+        raise HTTPException(401, "invalid session") from None
+    user = User.from_mongo(await db.users.find_one({"_id": str(payload.get("sub"))}))
     if not user:
         raise HTTPException(401, "invalid session")
-    memberships = (
-        await session.scalars(select(Membership).where(Membership.user_id == user.id))
-    ).all()
+    cursor = db.memberships.find({"user_id": user.id})
+    memberships = [Membership.from_mongo(doc) for doc in await cursor.to_list(100) if doc]
+    memberships = [m for m in memberships if m is not None]
     if not memberships:
         raise HTTPException(403, "user has no organization")
     org = None
     membership = None
-    if x_org_id:
-        membership = next((m for m in memberships if str(m.org_id) == x_org_id), None)
+    wanted = x_org_id or str(payload.get("org_id") or "")
+    if wanted:
+        membership = next((m for m in memberships if m.org_id == wanted), None)
         if not membership:
             raise HTTPException(403, "not a member of this org")
-        org = await session.get(Org, membership.org_id)
+        org = Org.from_mongo(await db.orgs.find_one({"_id": membership.org_id}))
     else:
         membership = memberships[0]
-        org = await session.get(Org, membership.org_id)
+        org = Org.from_mongo(await db.orgs.find_one({"_id": membership.org_id}))
     if not org or org.deleted_at:
         raise HTTPException(404, "organization not found")
-    await _apply_org_rls(session, org.id)
-    return AuthContext(user, org, membership, "session")
+    return AuthContext(user, org, membership, "jwt")
 
 
 AuthDep = Annotated[AuthContext, Depends(get_auth)]
@@ -142,7 +129,3 @@ def verify_password(password: str, hashed: str) -> bool:
         return hashlib.compare_digest(dk.hex(), dk_hex)
     except Exception:
         return False
-
-
-def session_expiry() -> datetime:
-    return datetime.now(timezone.utc) + timedelta(days=14)

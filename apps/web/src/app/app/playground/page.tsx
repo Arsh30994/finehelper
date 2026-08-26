@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import AppShell from "../app-shell";
-import { api } from "@/lib/api";
+import { chatCompletions, listDeployments, listRuns } from "@/api";
 
 type Deployment = { id: string; name: string; backend: string; run_id: string };
 type Run = { id: string; provider_model_id?: string; backend: string };
@@ -14,8 +14,8 @@ export default function PlaygroundPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    api<Deployment[]>("/v1/deployments").then(setDeps).catch(() => setDeps([]));
-    api<Run[]>("/v1/runs").then(setRuns).catch(() => setRuns([]));
+    listDeployments().then(setDeps).catch(() => setDeps([]));
+    listRuns().then(setRuns).catch(() => setRuns([]));
   }, []);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
@@ -24,13 +24,10 @@ export default function PlaygroundPage() {
     setReply("");
     const fd = new FormData(e.currentTarget);
     try {
-      const data = await api<{ choices: { message: { content: string } }[] }>("/v1/chat/completions", {
-        method: "POST",
-        body: JSON.stringify({
-          deployment_id: fd.get("deployment_id") || null,
-          run_id: fd.get("run_id") || null,
-          messages: [{ role: "user", content: fd.get("message") }],
-        }),
+      const data = await chatCompletions({
+        deployment_id: fd.get("deployment_id") || null,
+        run_id: fd.get("run_id") || null,
+        messages: [{ role: "user", content: fd.get("message") }],
       });
       setReply(data.choices[0].message.content);
     } catch (err) {

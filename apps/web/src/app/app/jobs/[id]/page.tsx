@@ -3,7 +3,7 @@
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import AppShell from "../../app-shell";
-import { api } from "@/lib/api";
+import { getJob, getJobEvents } from "@/api";
 import Link from "next/link";
 
 type Job = { id: string; type: string; status: string; result?: unknown; error?: string | null };
@@ -20,8 +20,8 @@ export default function JobDetailPage() {
       while (!stop) {
         try {
           const [j, ev] = await Promise.all([
-            api<Job>(`/v1/jobs/${id}`),
-            api<Event[]>(`/v1/jobs/${id}/event-log`),
+            getJob(id),
+            getJobEvents(id),
           ]);
           setJob(j);
           setEvents(ev);

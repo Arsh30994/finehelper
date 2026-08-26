@@ -1,14 +1,10 @@
 services:
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: finehelper
-      POSTGRES_PASSWORD: finehelper
-      POSTGRES_DB: finehelper
+  mongo:
+    image: mongo:7
     ports:
-      - "5432:5432"
+      - "27017:27017"
     volumes:
-      - finehelper_pg:/var/lib/postgresql/data
+      - finehelper_mongo:/data/db
 
   redis:
     image: redis:7-alpine
@@ -17,4 +13,4 @@ services:
       - "6379:6379"
 
 volumes:
-  finehelper_pg:
+  finehelper_mongo:

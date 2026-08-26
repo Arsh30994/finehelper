@@ -4,7 +4,9 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
+
+from finehelper_core.models import MongoModel
 
 
 class SignupIn(BaseModel):
@@ -114,6 +116,13 @@ class ChatIn(BaseModel):
     temperature: float = 0.2
     stream: bool = False
 
+    @field_validator("deployment_id", "run_id", mode="before")
+    @classmethod
+    def _empty_uuid(cls, value: object) -> object:
+        if value == "" or value is None:
+            return None
+        return value
+
 
 class ApiKeyIn(BaseModel):
     name: str = "cli"
@@ -128,20 +137,22 @@ class HeartbeatIn(BaseModel):
     adapter_uri: str | None = None
 
 
-def orm_to_dict(obj: Any, extra: dict[str, Any] | None = None) -> dict[str, Any]:
-    data: dict[str, Any] = {}
-    for col in obj.__table__.columns:
-        val = getattr(obj, col.name)
-        if isinstance(val, UUID):
-            val = str(val)
-        elif isinstance(val, datetime):
-            val = val.isoformat()
-        data[col.name] = val
+SECRET_FIELDS = {"password_hash", "encrypted_secret", "key_hash", "token_hash"}
+
+
+def doc_to_dict(obj: MongoModel | dict[str, Any], extra: dict[str, Any] | None = None) -> dict[str, Any]:
+    if isinstance(obj, dict):
+        data = dict(obj)
+        if "_id" in data and "id" not in data:
+            data["id"] = str(data.pop("_id"))
+    else:
+        data = obj.model_dump(mode="json")
     if extra:
         data.update(extra)
-    # never leak secrets
-    data.pop("password_hash", None)
-    data.pop("encrypted_secret", None)
-    data.pop("key_hash", None)
-    data.pop("token_hash", None)
+    for key in SECRET_FIELDS:
+        data.pop(key, None)
     return data
+
+
+# Back-compat alias used by older imports
+orm_to_dict = doc_to_dict

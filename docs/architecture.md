@@ -1,6 +1,8 @@
 # Finehelper architecture
 
-Control plane (API, Postgres, web, CLI) is separate from the data plane (object storage, CPU workers, Modal GPUs, optional local runner). Jobs are the unit of work. Dataset versions are immutable. Deployments require an eval report.
+Control plane (API, MongoDB, web, CLI) is separate from the data plane (object storage, CPU workers, Modal GPUs, optional local runner). Jobs are the unit of work. Dataset versions are immutable. Deployments require an eval report.
+
+HTTP layout: **routes → controllers → services → Mongo models**. Session tokens are JWTs (`apps/api/finehelper_api/jwt.py`). Frontend calls live in `apps/web/src/api/index.js`.
 
 ## Surfaces
 
@@ -34,8 +36,8 @@ Inference gateway: `POST /v1/chat/completions` routes to the provider model or d
 
 ## Security
 
-Tenant `org_id` on every row. Provider secrets AES-GCM with `MASTER_KEY`. API keys `fh_live_…` hashed at rest. Logs scrub `sk-` / `hf_` / bearer tokens. Presigned object keys are org-prefixed.
+Tenant `org_id` on every document. Provider secrets AES-GCM with `MASTER_KEY`. Login/signup issue HS256 JWTs (`SECRET_KEY`). API keys `fh_live_…` hashed at rest. Logs scrub `sk-` / `hf_` / bearer tokens. Presigned object keys are org-prefixed.
 
 ## Deploy topology
 
-Render: web service (API) + background worker + Postgres + Key Value (`noeviction`). Vercel: Next.js. Modal: GPU functions. Cloudflare R2: datasets and artifacts.
+Render: web service (API) + background worker + MongoDB (URI) + Key Value (`noeviction`). Vercel: Next.js. Modal: GPU functions. Cloudflare R2: datasets and artifacts.

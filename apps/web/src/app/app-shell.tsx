@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { api, clearSession, getToken } from "@/lib/api";
+import { clearSession, getToken, me as fetchMe } from "@/api";
 
 const nav = [
   { href: "/app", label: "Projects" },
@@ -22,7 +22,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       router.replace("/");
       return;
     }
-    api("/v1/auth/me")
+    fetchMe()
       .then(setMe)
       .catch(() => {
         clearSession();

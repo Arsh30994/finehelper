@@ -3,7 +3,7 @@
 import { useParams } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import AppShell from "../../app-shell";
-import { api, getToken, uploadBytes } from "@/lib/api";
+import { createDataset, getDataset, getProject, listDatasets, listJobs, listRuns, startTrain, uploadDatasetFile } from "@/api";
 import Link from "next/link";
 
 type Project = { id: string; name: string; slug: string; default_backend: string; default_base_model: string };
@@ -36,10 +36,10 @@ export default function ProjectPage() {
 
   const load = useCallback(async () => {
     const [p, ds, r, j] = await Promise.all([
-      api<Project>(`/v1/projects/${id}`),
-      api<Dataset[]>(`/v1/datasets?project_id=${id}`),
-      api<Run[]>(`/v1/runs?project_id=${id}`),
-      api<Job[]>(`/v1/jobs?project_id=${id}`),
+      getProject(id),
+      listDatasets(id),
+      listRuns(id),
+      listJobs(id),
     ]);
     setProject(p);
     setDatasets(ds);
@@ -47,7 +47,7 @@ export default function ProjectPage() {
     setJobs(j);
     const vs: Record<string, Version[]> = {};
     for (const d of ds) {
-      const full = await api<{ versions: Version[] }>(`/v1/datasets/${d.id}`);
+      const full = await getDataset(d.id);
       vs[d.id] = full.versions;
     }
     setVersions(vs);
@@ -57,39 +57,26 @@ export default function ProjectPage() {
     load().catch((e) => setMsg(String(e.message || e)));
   }, [load]);
 
-  async function createDataset(e: FormEvent<HTMLFormElement>) {
+  async function onCreateDataset(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    await api("/v1/datasets", { method: "POST", body: JSON.stringify({ project_id: id, name: fd.get("name") }) });
+    await createDataset({ project_id: id, name: fd.get("name") });
     await load();
   }
 
   async function onUpload(datasetId: string, file: File) {
     setMsg("uploading…");
-    const token = getToken();
-    if (!token) return;
-    const init = await api<{ key: string; upload_url: string }>("/v1/datasets/uploads", {
-      method: "POST",
-      body: JSON.stringify({ dataset_id: datasetId, filename: file.name, content_type: "application/octet-stream", format: "openai-chat" }),
-    });
-    await uploadBytes(init.upload_url, file, token);
-    const job = await api<{ job_id: string }>(`/v1/datasets/${datasetId}/versions`, {
-      method: "POST",
-      body: JSON.stringify({ dataset_id: datasetId, key: init.key, filename: file.name, format: "openai-chat" }),
-    });
+    const job = await uploadDatasetFile(datasetId, file, { format: "openai-chat" });
     setMsg(`ingest job ${job.job_id}`);
     setTimeout(() => load(), 2000);
   }
 
   async function train(versionId: string) {
     if (!project) return;
-    const job = await api<{ job_id: string }>("/v1/jobs/train", {
-      method: "POST",
-      body: JSON.stringify({
-        project_id: project.id,
-        dataset_version_id: versionId,
-        backend: project.default_backend,
-      }),
+    const job = await startTrain({
+      project_id: project.id,
+      dataset_version_id: versionId,
+      backend: project.default_backend,
     });
     setMsg(`train job ${job.job_id}`);
     setTimeout(() => load(), 2500);
@@ -108,7 +95,7 @@ export default function ProjectPage() {
 
       <section className="mb-10">
         <h2 className="text-sm uppercase tracking-wide text-zinc-500 mb-3">Datasets</h2>
-        <form onSubmit={createDataset} className="flex gap-2 mb-4">
+        <form onSubmit={onCreateDataset} className="flex gap-2 mb-4">
           <input name="name" placeholder="support-v1" required className="bg-ink-800 border border-ink-700 rounded px-3 py-2 text-sm" />
           <button className="text-sm border border-ink-700 rounded px-3">New dataset</button>
         </form>

@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import AppShell from "../app-shell";
-import { api } from "@/lib/api";
+import { createApiKey, listApiKeys, listCredentials, saveCredential } from "@/api";
 
 type Cred = { id: string; provider: string; last4: string };
 type Key = { id: string; name: string; prefix: string };
@@ -14,8 +14,8 @@ export default function SettingsPage() {
   const [msg, setMsg] = useState("");
 
   async function load() {
-    setCreds(await api<Cred[]>("/v1/credentials"));
-    setKeys(await api<Key[]>("/v1/auth/api-keys"));
+    setCreds(await listCredentials());
+    setKeys(await listApiKeys());
   }
 
   useEffect(() => {
@@ -25,16 +25,13 @@ export default function SettingsPage() {
   async function saveCred(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    await api("/v1/credentials", {
-      method: "POST",
-      body: JSON.stringify({ provider: fd.get("provider"), secret: fd.get("secret") }),
-    });
+    await saveCredential({ provider: fd.get("provider"), secret: fd.get("secret") });
     (e.target as HTMLFormElement).reset();
     await load();
   }
 
   async function mintKey() {
-    const data = await api<{ key: string }>("/v1/auth/api-keys", { method: "POST" });
+    const data = await createApiKey();
     setNewKey(data.key);
     await load();
   }
