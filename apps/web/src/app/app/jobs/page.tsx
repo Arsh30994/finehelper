@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import AppShell from "../app-shell";
-import { api } from "@/lib/api";
+import { listJobs } from "@/api";
 import Link from "next/link";
 
 type Job = { id: string; type: string; status: string; created_at: string; error?: string | null };
@@ -10,7 +10,7 @@ type Job = { id: string; type: string; status: string; created_at: string; error
 export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   useEffect(() => {
-    api<Job[]>("/v1/jobs").then(setJobs).catch(() => setJobs([]));
+    listJobs().then(setJobs).catch(() => setJobs([]));
   }, []);
   return (
     <AppShell>

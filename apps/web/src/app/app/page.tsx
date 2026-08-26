@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import AppShell from "../app-shell";
-import { api } from "@/lib/api";
+import { createProject, listProjects } from "@/api";
 
 type Project = {
   id: string;
@@ -19,7 +19,7 @@ export default function ProjectsPage() {
   const [error, setError] = useState("");
 
   async function refresh() {
-    setProjects(await api<Project[]>("/v1/projects"));
+    setProjects(await listProjects());
   }
 
   useEffect(() => {
@@ -29,13 +29,10 @@ export default function ProjectsPage() {
   async function onCreate(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    await api("/v1/projects", {
-      method: "POST",
-      body: JSON.stringify({
-        name: fd.get("name"),
-        default_backend: fd.get("backend") || "dry_run",
-        default_base_model: fd.get("base") || "gpt-4.1-mini",
-      }),
+    await createProject({
+      name: fd.get("name"),
+      default_backend: fd.get("backend") || "dry_run",
+      default_base_model: fd.get("base") || "gpt-4.1-mini",
     });
     (e.target as HTMLFormElement).reset();
     await refresh();

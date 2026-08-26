@@ -3,16 +3,7 @@ from __future__ import annotations
 import os
 from functools import lru_cache
 
-from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
-
-def _normalize_database_url(url: str) -> str:
-    if url.startswith("postgres://"):
-        return "postgresql+asyncpg://" + url[len("postgres://") :]
-    if url.startswith("postgresql://") and "+asyncpg" not in url:
-        return "postgresql+asyncpg://" + url[len("postgresql://") :]
-    return url
 
 
 class Settings(BaseSettings):
@@ -26,7 +17,8 @@ class Settings(BaseSettings):
     secret_key: str = "change-me-to-a-long-random-string"
     master_key: str = "change-me-32-byte-key-for-aesgcm!!!!"
 
-    database_url: str = "sqlite+aiosqlite:///./.data/finehelper.db"
+    mongodb_uri: str = "mongodb://127.0.0.1:27017"
+    mongodb_db: str = "finehelper"
     redis_url: str | None = None
 
     s3_endpoint_url: str | None = None
@@ -41,15 +33,7 @@ class Settings(BaseSettings):
     modal_token_id: str | None = None
     modal_token_secret: str | None = None
     hf_token: str | None = None
-
-    @field_validator("database_url", mode="before")
-    @classmethod
-    def _norm_db(cls, value: object) -> str:
-        return _normalize_database_url(str(value))
-
-    @property
-    def is_sqlite(self) -> bool:
-        return self.database_url.startswith("sqlite")
+    jwt_ttl_days: int = 14
 
     @property
     def uses_r2(self) -> bool:

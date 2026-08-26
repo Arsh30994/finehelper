@@ -2,9 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, setSession } from "@/lib/api";
-
-type AuthResp = { token: string; user: unknown; org: unknown };
+import { login, setSession, signup } from "@/api";
 
 export default function HomePage() {
   const router = useRouter();
@@ -18,17 +16,15 @@ export default function HomePage() {
     setPending(true);
     const fd = new FormData(e.currentTarget);
     try {
-      const path = mode === "login" ? "/v1/auth/login" : "/v1/auth/signup";
-      const body =
+      const data =
         mode === "login"
-          ? { email: fd.get("email"), password: fd.get("password") }
-          : {
-              email: fd.get("email"),
-              password: fd.get("password"),
-              name: fd.get("name"),
-              org_name: fd.get("org_name"),
-            };
-      const data = await api<AuthResp>(path, { method: "POST", body: JSON.stringify(body) });
+          ? await login({ email: String(fd.get("email")), password: String(fd.get("password")) })
+          : await signup({
+              email: String(fd.get("email")),
+              password: String(fd.get("password")),
+              name: String(fd.get("name")),
+              org_name: String(fd.get("org_name")),
+            });
       setSession(data.token, data.org);
       router.push("/app");
     } catch (err) {

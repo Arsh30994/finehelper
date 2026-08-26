@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import AppShell from "../../app-shell";
-import { api } from "@/lib/api";
+import { compareRuns } from "@/api";
 import Link from "next/link";
 
 type RunBundle = {
@@ -23,7 +23,7 @@ function CompareInner() {
 
   useEffect(() => {
     if (!aId || !bId) return;
-    api<{ a: RunBundle; b: RunBundle }>(`/v1/runs/${aId}/compare?other=${bId}`)
+    compareRuns(aId, bId)
       .then(setData)
       .catch((e) => setError(String(e.message || e)));
   }, [aId, bId]);

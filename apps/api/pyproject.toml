@@ -12,6 +12,7 @@ dependencies = [
   "fastapi>=0.111",
   "uvicorn[standard]>=0.30",
   "sse-starlette>=2.1",
+  "PyJWT>=2.8",
 ]
 
 [tool.setuptools.packages.find]

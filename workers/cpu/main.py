@@ -1,4 +1,4 @@
-"""Render CPU worker: claim jobs from Postgres and run the data plane."""
+"""Render CPU worker: claim jobs from MongoDB and run the data plane."""
 
 from __future__ import annotations
 

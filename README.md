@@ -18,7 +18,7 @@ raw data → canonical dataset version → training job → eval report → depl
 | `packages/core` | Domain models, storage, dataset pipeline, backends |
 | `workers/cpu` | Render background worker (job claim loop) |
 | `workers/gpu` | Modal QLoRA / GGUF / vLLM |
-| `render.yaml` | API + worker + Postgres + Key Value |
+| `render.yaml` | API + worker + Key Value (Mongo URI via env) |
 | `finehelper.yaml.example` | Config-as-code recipe |
 
 Architecture detail: [docs/architecture.md](docs/architecture.md).
@@ -45,6 +45,17 @@ npm run dev
 
 Open http://localhost:3000 — sign up, create a project (backend `dry_run`), upload `examples/support.jsonl`, train, eval with `examples/golden.jsonl`, then chat in Playground.
 
+MongoDB is required. Local default is `mongodb://127.0.0.1:27017` / database `finehelper`:
+
+```powershell
+docker compose up -d mongo
+Copy-Item .env.example .env
+```
+
+Object storage stays on local disk (`.data/storage`) unless you set `S3_*`. Production uses Mongo (Atlas or self-hosted) + R2; see `.env.example`.
+
+Indexes are created on API startup (`ensure_indexes`). There is no Alembic / SQL migration step.
+
 CLI:
 
 ```powershell
@@ -55,17 +66,9 @@ fh train -f .\finehelper.yaml.example --dataset-version-id <id>
 fh logs <job_id>
 ```
 
-SQLite and local disk (`.data/`) are the default so you do not need Docker. Production uses Postgres + R2; see `.env.example`. Optional: `docker compose up -d` then set `DATABASE_URL` to Postgres.
-
-Schema migrations live in `packages/core/alembic`. Render runs `alembic upgrade head` as the API pre-deploy command. Locally:
-
-```powershell
-alembic -c packages/core/alembic.ini upgrade head
-```
-
 ## Production
 
-- **API + CPU worker + Postgres + Redis:** `render.yaml` (API listens on `0.0.0.0:$PORT`, health `/healthz`, `FH_EMBEDDED_WORKER=0`).
+- **API + CPU worker + MongoDB + Redis:** `render.yaml` (API listens on `0.0.0.0:$PORT`, health `/healthz`, `FH_EMBEDDED_WORKER=0`). Set `MONGODB_URI` to Atlas or your cluster.
 - **Web:** deploy `apps/web` to Vercel with `NEXT_PUBLIC_API_URL` pointing at the Render API.
 - **Object storage:** set `S3_*` to a Cloudflare R2 bucket. Render disks are ephemeral — never store datasets there.
 - **GPUs:** `modal deploy workers/gpu/modal_app.py` then train with `backend: lora_modal`.

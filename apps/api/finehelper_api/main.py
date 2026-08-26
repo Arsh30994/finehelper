@@ -8,8 +8,16 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from finehelper_api.deps import AuthDep
-from finehelper_api.routers import auth, chat, datasets, jobs, ops, orgs, projects
-from finehelper_core.db import init_db, make_engine, make_session_factory
+from finehelper_api.routes import (
+    auth_router,
+    chat_router,
+    datasets_router,
+    jobs_router,
+    ops_router,
+    orgs_router,
+    projects_router,
+)
+from finehelper_core.db import connect_mongo, ensure_indexes
 from finehelper_core.jobs.loop import run_worker_loop
 from finehelper_core.settings import get_settings
 from finehelper_core.storage import LocalObjectStore, build_store
@@ -18,16 +26,16 @@ from finehelper_core.storage import LocalObjectStore, build_store
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
-    engine = make_engine(settings)
-    await init_db(engine)
+    mongo = connect_mongo(settings)
+    await mongo.ping()
+    await ensure_indexes(mongo)
     app.state.settings = settings
-    app.state.engine = engine
-    app.state.session_factory = make_session_factory(engine)
+    app.state.db = mongo
     app.state.store = build_store(settings)
     stop = asyncio.Event()
     worker_task = None
     if settings.fh_embedded_worker:
-        worker_task = asyncio.create_task(run_worker_loop(stop, "api-embedded"))
+        worker_task = asyncio.create_task(run_worker_loop(stop, "api-embedded", mongo))
     yield
     stop.set()
     if worker_task:
@@ -36,7 +44,7 @@ async def lifespan(app: FastAPI):
             await worker_task
         except asyncio.CancelledError:
             pass
-    await engine.dispose()
+    mongo.close()
 
 
 def create_app() -> FastAPI:
@@ -54,17 +62,18 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    app.include_router(auth.router)
-    app.include_router(orgs.router)
-    app.include_router(projects.router)
-    app.include_router(datasets.router)
-    app.include_router(jobs.router)
-    app.include_router(ops.router)
-    app.include_router(chat.router)
+    app.include_router(auth_router)
+    app.include_router(orgs_router)
+    app.include_router(projects_router)
+    app.include_router(datasets_router)
+    app.include_router(jobs_router)
+    app.include_router(ops_router)
+    app.include_router(chat_router)
 
     @app.get("/healthz")
-    async def healthz():
-        return {"ok": True, "service": "finehelper-api"}
+    async def healthz(request: Request):
+        await request.app.state.db.ping()
+        return {"ok": True, "service": "finehelper-api", "db": "mongo"}
 
     @app.put("/v1/internal/local-upload/{key:path}")
     async def local_upload(key: str, request: Request, auth: AuthDep):
@@ -74,7 +83,6 @@ def create_app() -> FastAPI:
         body = await request.body()
         decoded = unquote(key)
         if not decoded.startswith(str(auth.org_id)) and f"/{auth.org_id}/" not in f"/{decoded}/":
-            # keys are uploads/{org}/{dataset}/filename
             parts = decoded.split("/")
             if str(auth.org_id) not in parts:
                 raise HTTPException(403, "key is not in this org prefix")
