@@ -1,24 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
-import AppShell from "../../app-shell";
 import { createDeployment, getRun, startEval } from "@/api";
-import Link from "next/link";
-
-type EvalRow = { id: string; passed: boolean; metrics: Record<string, number> };
-type Run = {
-  id: string;
-  backend: string;
-  base_model: string;
-  provider_model_id?: string | null;
-  adapter_uri?: string | null;
-  metrics?: Record<string, number> | null;
-  hyperparams?: Record<string, unknown> | null;
-  evals: EvalRow[];
-  dataset_version_id: string;
-  job_id: string;
-};
+import type { Run } from "@/types";
+import { EmptyState, MetricRow, PageHeader, Panel, btnAccentClass, btnGhostClass, btnPrimaryClass, inputClass } from "@/components/ui";
 
 export default function RunPage() {
   const { id } = useParams<{ id: string }>();
@@ -57,53 +44,82 @@ export default function RunPage() {
   }
 
   return (
-    <AppShell>
-      <h1 className="text-2xl font-medium font-mono">{id.slice(0, 8)}</h1>
-      <p className="text-sm text-zinc-500 mt-1 mb-6">
-        {run?.backend} · {run?.base_model}
-      </p>
-      {msg && <p className="text-xs text-copper-300 mb-4">{msg}</p>}
-      <dl className="grid grid-cols-2 gap-3 text-sm mb-8">
-        <dt className="text-zinc-500">Provider model</dt>
-        <dd className="font-mono text-xs">{run?.provider_model_id || "—"}</dd>
-        <dt className="text-zinc-500">Adapter</dt>
-        <dd className="font-mono text-xs break-all">{run?.adapter_uri || "—"}</dd>
-        <dt className="text-zinc-500">Metrics</dt>
-        <dd className="font-mono text-xs">{JSON.stringify(run?.metrics || {})}</dd>
-        <dt className="text-zinc-500">Train job</dt>
-        <dd>
-          <Link className="text-copper-300" href={`/app/jobs/${run?.job_id}`}>
-            {run?.job_id?.slice(0, 8)}
-          </Link>
-        </dd>
-      </dl>
+    <>
+      <PageHeader
+        title={<span className="font-mono">{id.slice(0, 8)}</span>}
+        description={`${run?.backend || "…"} · ${run?.base_model || ""}`}
+      />
+      {msg && <p className="mb-4 text-xs text-wine-500">{msg}</p>}
 
-      <h2 className="text-sm uppercase tracking-wide text-zinc-500 mb-2">Evals</h2>
-      <div className="border border-ink-700 rounded divide-y divide-ink-700 text-sm mb-6">
-        {(run?.evals || []).length === 0 && <p className="p-3 text-zinc-500">No eval yet — a run is not production-ready until it has one.</p>}
+      <div className="fh-card mb-6 grid gap-0 md:grid-cols-2">
+        <div className="border-b border-mist-200 p-6 md:border-b-0 md:border-r">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-wine-500">Run identity</p>
+          <h2 className="mt-2 font-display text-2xl text-wine-700">{run?.base_model || "Loading…"}</h2>
+          <p className="mt-1 text-sm text-zinc-500">{run?.backend}</p>
+          <dl className="mt-6 space-y-3 text-sm">
+            <div>
+              <dt className="text-[11px] uppercase text-zinc-400">Provider model</dt>
+              <dd className="font-mono text-xs">{run?.provider_model_id || "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-[11px] uppercase text-zinc-400">Adapter</dt>
+              <dd className="break-all font-mono text-xs">{run?.adapter_uri || "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-[11px] uppercase text-zinc-400">Train job</dt>
+              <dd>
+                <Link className="text-wine-500 hover:underline" href={`/app/jobs/${run?.job_id}`}>
+                  {run?.job_id?.slice(0, 8)}
+                </Link>
+              </dd>
+            </div>
+          </dl>
+        </div>
+        <div className="p-6">
+          <h3 className="font-display text-2xl text-wine-600">Training credential</h3>
+          <div className="mt-3">
+            <MetricRow label="Backend" hint="Where this run trained" value={run?.backend || "—"} />
+            <MetricRow
+              label="Metrics"
+              hint="Logged training metrics"
+              value={<span className="font-mono text-sm">{JSON.stringify(run?.metrics || {})}</span>}
+            />
+            <MetricRow label="Evals" hint="Golden suite reports" value={(run?.evals || []).length} />
+          </div>
+          <button onClick={deploy} className={`${btnAccentClass} mt-4 w-full`}>
+            Deploy model →
+          </button>
+        </div>
+      </div>
+
+      <h2 className="mb-2 font-display text-xl text-wine-600">Evals</h2>
+      <Panel className="mb-6 text-sm">
+        {(run?.evals || []).length === 0 && (
+          <EmptyState>No eval yet — a run is not production-ready until it has one.</EmptyState>
+        )}
         {(run?.evals || []).map((ev) => (
-          <div key={ev.id} className="px-3 py-2 flex justify-between">
+          <div key={ev.id} className="flex justify-between px-4 py-3">
             <span className="font-mono text-xs">{ev.id.slice(0, 8)}</span>
             <span>{ev.passed ? "passed" : "gate failed"}</span>
             <span className="font-mono text-xs">{JSON.stringify(ev.metrics)}</span>
           </div>
         ))}
-      </div>
+      </Panel>
 
-      <form onSubmit={runEval} className="flex items-end gap-3 mb-4">
-        <label className="text-xs text-zinc-500">
+      <form onSubmit={runEval} className="fh-card flex flex-wrap items-end gap-3 p-5">
+        <label className="text-xs font-semibold text-wine-700">
           Golden suite (JSONL)
-          <input name="suite" type="file" required accept=".jsonl,.json" className="block mt-1 text-sm" />
+          <input name="suite" type="file" required accept=".jsonl,.json" className="mt-1.5 block text-sm" />
         </label>
-        <label className="text-xs text-zinc-500">
+        <label className="text-xs font-semibold text-wine-700">
           Min exact_match
-          <input name="min" defaultValue="0.8" className="block mt-1 bg-ink-800 border border-ink-700 rounded px-2 py-1 w-20" />
+          <input name="min" defaultValue="0.8" className={`mt-1.5 block ${inputClass} w-24`} />
         </label>
-        <button className="bg-ink-700 rounded px-3 py-2 text-sm">Run eval</button>
+        <button className={btnPrimaryClass}>Run eval</button>
+        <Link href={`/app/playground`} className={btnGhostClass}>
+          Chat in playground
+        </Link>
       </form>
-      <button onClick={deploy} className="text-sm text-copper-300">
-        Deploy (blocked unless eval passed, unless you override via CLI)
-      </button>
-    </AppShell>
+    </>
   );
 }

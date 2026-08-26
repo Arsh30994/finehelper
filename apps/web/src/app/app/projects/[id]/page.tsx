@@ -1,35 +1,17 @@
 "use client";
 
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import AppShell from "../../app-shell";
 import { createDataset, getDataset, getProject, listDatasets, listJobs, listRuns, startTrain, uploadDatasetFile } from "@/api";
-import Link from "next/link";
-
-type Project = { id: string; name: string; slug: string; default_backend: string; default_base_model: string };
-type Dataset = { id: string; name: string };
-type Version = {
-  id: string;
-  status: string;
-  row_count: number;
-  content_digest: string;
-  stats?: { approx_tokens_p50?: number };
-};
-type Run = {
-  id: string;
-  backend: string;
-  base_model: string;
-  provider_model_id?: string;
-  metrics?: Record<string, number>;
-  created_at: string;
-};
-type Job = { id: string; type: string; status: string };
+import type { Dataset, DatasetVersion, Job, Project, Run } from "@/types";
+import { EmptyState, MonoId, PageHeader, Panel, StatusBadge, btnGhostClass, inputClass } from "@/components/ui";
 
 export default function ProjectPage() {
   const { id } = useParams<{ id: string }>();
   const [project, setProject] = useState<Project | null>(null);
   const [datasets, setDatasets] = useState<Dataset[]>([]);
-  const [versions, setVersions] = useState<Record<string, Version[]>>({});
+  const [versions, setVersions] = useState<Record<string, DatasetVersion[]>>({});
   const [runs, setRuns] = useState<Run[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [msg, setMsg] = useState("");
@@ -45,7 +27,7 @@ export default function ProjectPage() {
     setDatasets(ds);
     setRuns(r);
     setJobs(j);
-    const vs: Record<string, Version[]> = {};
+    const vs: Record<string, DatasetVersion[]> = {};
     for (const d of ds) {
       const full = await getDataset(d.id);
       vs[d.id] = full.versions;
@@ -83,28 +65,31 @@ export default function ProjectPage() {
   }
 
   return (
-    <AppShell>
-      <p className="text-xs text-zinc-500 mb-2">
-        <Link href="/app">Projects</Link> / {project?.slug}
+    <>
+      <p className="mb-2 text-xs text-zinc-500">
+        <Link href="/app/projects" className="hover:text-wine-600">
+          Projects
+        </Link>{" "}
+        / {project?.slug}
       </p>
-      <h1 className="text-2xl font-medium">{project?.name}</h1>
-      <p className="text-sm text-zinc-500 mt-1 mb-8">
-        {project?.default_backend} · {project?.default_base_model}
-      </p>
-      {msg && <p className="text-xs text-copper-300 mb-4 font-mono">{msg}</p>}
+      <PageHeader
+        title={project?.name || "…"}
+        description={`${project?.default_backend || ""} · ${project?.default_base_model || ""}`}
+      />
+      {msg && <p className="mb-4 font-mono text-xs text-wine-500">{msg}</p>}
 
       <section className="mb-10">
-        <h2 className="text-sm uppercase tracking-wide text-zinc-500 mb-3">Datasets</h2>
-        <form onSubmit={onCreateDataset} className="flex gap-2 mb-4">
-          <input name="name" placeholder="support-v1" required className="bg-ink-800 border border-ink-700 rounded px-3 py-2 text-sm" />
-          <button className="text-sm border border-ink-700 rounded px-3">New dataset</button>
+        <h2 className="mb-3 font-display text-xl text-wine-600">Datasets</h2>
+        <form onSubmit={onCreateDataset} className="mb-4 flex gap-2">
+          <input name="name" placeholder="support-v1" required className={inputClass} />
+          <button className={btnGhostClass}>New dataset</button>
         </form>
         <div className="space-y-4">
           {datasets.map((d) => (
-            <div key={d.id} className="border border-ink-700 rounded p-4">
-              <div className="flex items-center justify-between mb-3">
-                <p className="font-medium">{d.name}</p>
-                <label className="text-xs text-copper-300 cursor-pointer">
+            <div key={d.id} className="fh-card p-5">
+              <div className="mb-3 flex items-center justify-between">
+                <p className="font-medium text-wine-700">{d.name}</p>
+                <label className="cursor-pointer text-xs font-semibold text-wine-500 hover:underline">
                   Upload JSONL
                   <input
                     type="file"
@@ -120,7 +105,7 @@ export default function ProjectPage() {
               <table className="w-full text-xs">
                 <thead className="text-zinc-500">
                   <tr>
-                    <th className="text-left font-normal py-1">version</th>
+                    <th className="py-1 text-left font-normal">version</th>
                     <th className="text-left font-normal">status</th>
                     <th className="text-left font-normal">rows</th>
                     <th className="text-left font-normal">digest</th>
@@ -129,14 +114,18 @@ export default function ProjectPage() {
                 </thead>
                 <tbody>
                   {(versions[d.id] || []).map((v) => (
-                    <tr key={v.id} className="border-t border-ink-700">
-                      <td className="py-2 font-mono">{v.id.slice(0, 8)}</td>
-                      <td>{v.status}</td>
+                    <tr key={v.id} className="border-t border-mist-200">
+                      <td className="py-2.5">
+                        <MonoId id={v.id} />
+                      </td>
+                      <td>
+                        <StatusBadge status={v.status} />
+                      </td>
                       <td>{v.row_count}</td>
                       <td className="font-mono">{(v.content_digest || "").slice(0, 12)}</td>
                       <td className="text-right">
                         {v.status === "ready" && (
-                          <button className="text-copper-300" onClick={() => train(v.id)}>
+                          <button className="font-semibold text-wine-500 hover:underline" onClick={() => train(v.id)}>
                             Train
                           </button>
                         )}
@@ -151,22 +140,22 @@ export default function ProjectPage() {
       </section>
 
       <section className="mb-10">
-        <h2 className="text-sm uppercase tracking-wide text-zinc-500 mb-3">Runs</h2>
-        <div className="border border-ink-700 rounded divide-y divide-ink-700">
-          {runs.length === 0 && <p className="p-4 text-sm text-zinc-500">No runs yet.</p>}
+        <h2 className="mb-3 font-display text-xl text-wine-600">Runs</h2>
+        <Panel>
+          {runs.length === 0 && <EmptyState>No runs yet.</EmptyState>}
           {runs.map((r) => (
-            <Link key={r.id} href={`/app/runs/${r.id}`} className="flex justify-between px-4 py-3 text-sm hover:bg-ink-800">
-              <span className="font-mono">{r.id.slice(0, 8)}</span>
+            <Link key={r.id} href={`/app/runs/${r.id}`} className="flex justify-between px-4 py-3 text-sm hover:bg-mist-100/80">
+              <MonoId id={r.id} />
               <span>
                 {r.backend} · {r.base_model}
               </span>
               <span className="text-zinc-500">{r.provider_model_id || "—"}</span>
             </Link>
           ))}
-        </div>
+        </Panel>
         {runs.length >= 2 && (
-          <p className="text-xs mt-2">
-            <Link className="text-copper-300" href={`/app/compare?a=${runs[0].id}&b=${runs[1].id}`}>
+          <p className="mt-2 text-xs">
+            <Link className="text-wine-500 hover:underline" href={`/app/compare?a=${runs[0].id}&b=${runs[1].id}`}>
               Compare latest two runs
             </Link>
           </p>
@@ -174,19 +163,17 @@ export default function ProjectPage() {
       </section>
 
       <section>
-        <h2 className="text-sm uppercase tracking-wide text-zinc-500 mb-3">Recent jobs</h2>
-        <div className="border border-ink-700 rounded divide-y divide-ink-700 text-sm">
+        <h2 className="mb-3 font-display text-xl text-wine-600">Recent jobs</h2>
+        <Panel className="text-sm">
           {jobs.slice(0, 12).map((j) => (
-            <Link key={j.id} href={`/app/jobs/${j.id}`} className="flex justify-between px-4 py-2 hover:bg-ink-800">
-              <span className="font-mono text-xs">{j.id.slice(0, 8)}</span>
+            <Link key={j.id} href={`/app/jobs/${j.id}`} className="flex justify-between px-4 py-2.5 hover:bg-mist-100/80">
+              <MonoId id={j.id} />
               <span>{j.type}</span>
-              <span className={j.status === "failed" ? "text-red-400" : j.status === "succeeded" ? "text-copper-300" : "text-zinc-400"}>
-                {j.status}
-              </span>
+              <StatusBadge status={j.status} />
             </Link>
           ))}
-        </div>
+        </Panel>
       </section>
-    </AppShell>
+    </>
   );
 }

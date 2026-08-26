@@ -1,28 +1,23 @@
 "use client";
 
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import AppShell from "../../app-shell";
 import { getJob, getJobEvents } from "@/api";
-import Link from "next/link";
-
-type Job = { id: string; type: string; status: string; result?: unknown; error?: string | null };
-type Event = { id: string; kind: string; message: string; created_at: string };
+import type { Job, JobEvent } from "@/types";
+import { PageHeader, StatusBadge } from "@/components/ui";
 
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [job, setJob] = useState<Job | null>(null);
-  const [events, setEvents] = useState<Event[]>([]);
+  const [events, setEvents] = useState<JobEvent[]>([]);
 
   useEffect(() => {
     let stop = false;
     async function poll() {
       while (!stop) {
         try {
-          const [j, ev] = await Promise.all([
-            getJob(id),
-            getJobEvents(id),
-          ]);
+          const [j, ev] = await Promise.all([getJob(id), getJobEvents(id)]);
           setJob(j);
           setEvents(ev);
           if (["succeeded", "failed", "cancelled"].includes(j.status)) break;
@@ -39,28 +34,37 @@ export default function JobDetailPage() {
   }, [id]);
 
   return (
-    <AppShell>
-      <p className="text-xs text-zinc-500 mb-2">
-        <Link href="/app/jobs">Jobs</Link>
+    <>
+      <p className="mb-2 text-xs text-zinc-500">
+        <Link href="/app/jobs" className="hover:text-wine-600">
+          Jobs
+        </Link>
       </p>
-      <h1 className="text-2xl font-medium font-mono">{id.slice(0, 8)}</h1>
-      <p className="text-sm text-zinc-500 mt-1 mb-6">
-        {job?.type} · {job?.status}
-      </p>
-      {job?.error && <pre className="text-xs text-red-400 whitespace-pre-wrap mb-4">{job.error}</pre>}
+      <PageHeader
+        title={<span className="font-mono">{id.slice(0, 8)}</span>}
+        description={
+          job ? (
+            <span className="inline-flex items-center gap-2">
+              <span className="capitalize">{job.type}</span>
+              <StatusBadge status={job.status} />
+            </span>
+          ) : null
+        }
+      />
+      {job?.error && <pre className="mb-4 whitespace-pre-wrap rounded-2xl bg-red-50 p-4 text-xs text-red-700">{job.error}</pre>}
       {job?.result != null && (
-        <pre className="text-xs bg-ink-900 border border-ink-700 rounded p-4 overflow-auto mb-6">
+        <pre className="mb-6 overflow-auto rounded-2xl border border-mist-300 bg-white p-4 text-xs shadow-lift">
           {JSON.stringify(job.result, null, 2)}
         </pre>
       )}
-      <h2 className="text-sm uppercase tracking-wide text-zinc-500 mb-2">Event log</h2>
-      <ul className="text-xs font-mono space-y-1 bg-ink-900 border border-ink-700 rounded p-4 max-h-[480px] overflow-auto">
+      <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">Event log</h2>
+      <ul className="max-h-[480px] space-y-1 overflow-auto rounded-2xl border border-mist-300 bg-white p-4 font-mono text-xs shadow-lift">
         {events.map((e) => (
           <li key={e.id}>
-            <span className="text-zinc-500">{e.kind}</span> {e.message}
+            <span className="text-lagoon-500">{e.kind}</span> {e.message}
           </li>
         ))}
       </ul>
-    </AppShell>
+    </>
   );
 }
