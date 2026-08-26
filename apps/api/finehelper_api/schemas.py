@@ -128,6 +128,11 @@ class ApiKeyIn(BaseModel):
     name: str = "cli"
 
 
+class InviteIn(BaseModel):
+    email: EmailStr
+    role: str = "member"
+
+
 class HeartbeatIn(BaseModel):
     metrics: dict[str, Any] | None = None
     message: str | None = None

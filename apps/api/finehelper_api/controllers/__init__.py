@@ -1,3 +1,4 @@
+# Controllers package — business logic (routes → controllers → models)
 from . import (
     auth_controller,
     chat_controller,

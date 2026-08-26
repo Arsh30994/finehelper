@@ -6,7 +6,7 @@ from fastapi import APIRouter
 
 from finehelper_api.controllers import org_controller
 from finehelper_api.deps import AuthDep, DbDep
-from finehelper_api.services.org_service import InviteIn
+from finehelper_api.schemas import InviteIn
 
 router = APIRouter(prefix="/v1", tags=["orgs"])
 
