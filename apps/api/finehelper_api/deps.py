@@ -9,9 +9,9 @@ from fastapi import Depends, Header, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from finehelper_api.jwt import JwtError, decode_access_token
+from finehelper_api.models import Membership, Org, User, auth_model
 from finehelper_core.crypto import hash_token
 from finehelper_core.db.mongo import Mongo
-from finehelper_core.models import ApiKey, Membership, Org, User
 from finehelper_core.settings import Settings
 
 bearer = HTTPBearer(auto_error=False)
@@ -60,18 +60,14 @@ async def get_auth(
     now = datetime.now(timezone.utc)
 
     if token.startswith("fh_live_"):
-        key = ApiKey.from_mongo(
-            await db.api_keys.find_one({"key_hash": hash_token(token), "revoked_at": None})
-        )
+        key = await auth_model.find_api_key_by_hash(db, hash_token(token))
         if not key:
             raise HTTPException(401, "invalid api key")
         key.last_used_at = now
-        await db.save(db.api_keys, key)
-        user = User.from_mongo(await db.users.find_one({"_id": key.user_id}))
-        org = Org.from_mongo(await db.orgs.find_one({"_id": key.org_id}))
-        membership = Membership.from_mongo(
-            await db.memberships.find_one({"org_id": key.org_id, "user_id": key.user_id})
-        )
+        await auth_model.save_api_key(db, key)
+        user = await auth_model.find_user_by_id(db, key.user_id)
+        org = await auth_model.find_org_by_id(db, key.org_id)
+        membership = await auth_model.find_membership(db, org_id=key.org_id, user_id=key.user_id)
         if not user or not org or not membership or org.deleted_at:
             raise HTTPException(401, "invalid api key")
         return AuthContext(user, org, membership, "api_key")
@@ -80,25 +76,21 @@ async def get_auth(
         payload = decode_access_token(token, settings.secret_key)
     except JwtError:
         raise HTTPException(401, "invalid session") from None
-    user = User.from_mongo(await db.users.find_one({"_id": str(payload.get("sub"))}))
+    user = await auth_model.find_user_by_id(db, str(payload.get("sub")))
     if not user:
         raise HTTPException(401, "invalid session")
-    cursor = db.memberships.find({"user_id": user.id})
-    memberships = [Membership.from_mongo(doc) for doc in await cursor.to_list(100) if doc]
-    memberships = [m for m in memberships if m is not None]
+    memberships = await auth_model.list_memberships_for_user(db, user.id)
     if not memberships:
         raise HTTPException(403, "user has no organization")
-    org = None
-    membership = None
     wanted = x_org_id or str(payload.get("org_id") or "")
     if wanted:
         membership = next((m for m in memberships if m.org_id == wanted), None)
         if not membership:
             raise HTTPException(403, "not a member of this org")
-        org = Org.from_mongo(await db.orgs.find_one({"_id": membership.org_id}))
+        org = await auth_model.find_org_by_id(db, membership.org_id)
     else:
         membership = memberships[0]
-        org = Org.from_mongo(await db.orgs.find_one({"_id": membership.org_id}))
+        org = await auth_model.find_org_by_id(db, membership.org_id)
     if not org or org.deleted_at:
         raise HTTPException(404, "organization not found")
     return AuthContext(user, org, membership, "jwt")

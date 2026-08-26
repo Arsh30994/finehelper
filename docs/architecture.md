@@ -2,7 +2,7 @@
 
 Control plane (API, MongoDB, web, CLI) is separate from the data plane (object storage, CPU workers, Modal GPUs, optional local runner). Jobs are the unit of work. Dataset versions are immutable. Deployments require an eval report.
 
-HTTP layout: **routes → controllers → services → Mongo models**. Session tokens are JWTs (`apps/api/finehelper_api/jwt.py`). Frontend calls live in `apps/web/src/api/index.js`.
+HTTP layout: **routes → controllers → models (Mongo repositories)**. Shared document schemas live in `packages/core`. Session tokens are JWTs (`apps/api/finehelper_api/jwt.py`). Frontend calls live in `apps/web/src/api/index.js`.
 
 ## Surfaces
 
