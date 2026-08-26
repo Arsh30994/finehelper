@@ -14,6 +14,12 @@ async def find_user_by_id(db: Mongo, user_id: str) -> User | None:
     return User.from_mongo(await db.users.find_one({"_id": user_id}))
 
 
+async def save_user(db: Mongo, user: User) -> User:
+    user.touch()
+    await db.users.replace_one({"_id": user.id}, user.to_mongo(), upsert=True)
+    return user
+
+
 async def insert_user(db: Mongo, user: User) -> User:
     await db.insert(db.users, user)
     return user

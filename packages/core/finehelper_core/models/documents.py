@@ -52,6 +52,19 @@ class User(Timestamped):
     email: str
     password_hash: str
     name: str
+    phone: str | None = None
+    email_verified_at: datetime | None = None
+    phone_verified_at: datetime | None = None
+    email_otp_hash: str | None = None
+    email_otp_expires_at: datetime | None = None
+    phone_otp_hash: str | None = None
+    phone_otp_expires_at: datetime | None = None
+    biometric_enabled: bool = False
+    webauthn_credential_id: str | None = None
+    webauthn_public_key: str | None = None
+    webauthn_challenge: str | None = None
+    webauthn_challenge_expires_at: datetime | None = None
+    last_biometric_at: datetime | None = None
 
 
 class Membership(Timestamped):
@@ -212,3 +225,54 @@ class UsageEvent(MongoModel):
     unit: str = "token"
     amount_usd: float | None = None
     created_at: datetime = Field(default_factory=utcnow)
+
+
+class TrustProfile(Timestamped):
+    """Thin-file trust onboarding for a user (demo UPI + mock bank)."""
+
+    user_id: str
+    org_id: str
+    upi_id: str | None = None
+    bank_name: str | None = None
+    bank_account_last4: str | None = None
+    consent_at: datetime | None = None
+    consent_scopes: list[str] = Field(default_factory=list)
+    occupation: str | None = None  # vendor | gig | farmer | kirana | other
+
+
+class TrustSignalBatch(Timestamped):
+    """Six months of synthetic payment / bill signals for scoring."""
+
+    user_id: str
+    org_id: str
+    months: int = 6
+    transactions: list[dict[str, Any]] = Field(default_factory=list)
+    bills: list[dict[str, Any]] = Field(default_factory=list)
+    recharges: list[dict[str, Any]] = Field(default_factory=list)
+    peers: list[dict[str, Any]] = Field(default_factory=list)
+    merchants: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class TrustScore(Timestamped):
+    model_config = ConfigDict(extra="ignore", protected_namespaces=())
+
+    user_id: str
+    org_id: str
+    score: int
+    factors: dict[str, float] = Field(default_factory=dict)
+    eligibility_min: int = 0
+    eligibility_max: int = 0
+    features: dict[str, float] = Field(default_factory=dict)
+    explanation: str | None = None
+    explanation_lang: str = "en"
+    model_version: str = "v1"
+    # Blockchain attestation (hashes only — no raw UPI/PII)
+    score_hash: str | None = None
+    signals_root: str | None = None
+    user_id_hash: str | None = None
+    chain_network: str | None = None
+    chain_tx_hash: str | None = None
+    chain_block: int | None = None
+    chain_explorer_url: str | None = None
+    chain_mode: str | None = None
+    local_tx_hash: str | None = None

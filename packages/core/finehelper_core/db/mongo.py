@@ -32,6 +32,9 @@ class Mongo:
         self.eval_reports: AsyncIOMotorCollection = database["eval_reports"]
         self.deployments: AsyncIOMotorCollection = database["deployments"]
         self.usage_events: AsyncIOMotorCollection = database["usage_events"]
+        self.trust_profiles: AsyncIOMotorCollection = database["trust_profiles"]
+        self.trust_signal_batches: AsyncIOMotorCollection = database["trust_signal_batches"]
+        self.trust_scores: AsyncIOMotorCollection = database["trust_scores"]
 
     async def ping(self) -> None:
         await self.client.admin.command("ping")
@@ -147,6 +150,24 @@ async def ensure_indexes(db: Mongo) -> None:
         [IndexModel([("org_id", ASCENDING), ("project_id", ASCENDING), ("created_at", ASCENDING)], name="ix_deployments_org_project")]
     )
     await db.usage_events.create_indexes([IndexModel([("org_id", ASCENDING), ("created_at", ASCENDING)], name="ix_usage_org")])
+    await db.trust_profiles.create_indexes(
+        [
+            IndexModel([("user_id", ASCENDING)], unique=True, name="uq_trust_profile_user"),
+            IndexModel([("org_id", ASCENDING)], name="ix_trust_profile_org"),
+        ]
+    )
+    await db.trust_signal_batches.create_indexes(
+        [
+            IndexModel([("user_id", ASCENDING), ("created_at", ASCENDING)], name="ix_trust_signals_user"),
+            IndexModel([("org_id", ASCENDING)], name="ix_trust_signals_org"),
+        ]
+    )
+    await db.trust_scores.create_indexes(
+        [
+            IndexModel([("user_id", ASCENDING), ("created_at", ASCENDING)], name="ix_trust_scores_user"),
+            IndexModel([("org_id", ASCENDING)], name="ix_trust_scores_org"),
+        ]
+    )
 
 
 async def get_by_id(coll: AsyncIOMotorCollection, model_cls: type[MongoModel], doc_id: str) -> Any:

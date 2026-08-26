@@ -7,6 +7,7 @@ from finehelper_api.models import job as job_model
 from finehelper_api.models import ops as ops_model
 from finehelper_api.models import org as org_model
 from finehelper_api.models import project as project_model
+from finehelper_api.models import trust as trust_model
 from finehelper_core.models import (
     ApiKey,
     Artifact,
@@ -23,6 +24,9 @@ from finehelper_core.models import (
     Project,
     Recipe,
     Run,
+    TrustProfile,
+    TrustScore,
+    TrustSignalBatch,
     UsageEvent,
     User,
 )
@@ -43,6 +47,9 @@ __all__ = [
     "Project",
     "Recipe",
     "Run",
+    "TrustProfile",
+    "TrustScore",
+    "TrustSignalBatch",
     "UsageEvent",
     "User",
     "auth_model",
@@ -52,4 +59,5 @@ __all__ = [
     "ops_model",
     "org_model",
     "project_model",
+    "trust_model",
 ]

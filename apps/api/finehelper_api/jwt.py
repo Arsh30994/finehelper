@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import jwt
+import secrets
 
 ALGORITHM = "HS256"
 TOKEN_TYPE = "access"
@@ -22,7 +23,7 @@ def encode_access_token(
     email: str,
     role: str,
     secret: str,
-    ttl_days: int = 14,
+    ttl_days: int = 7,
 ) -> str:
     now = datetime.now(timezone.utc)
     payload = {
@@ -32,14 +33,21 @@ def encode_access_token(
         "role": role,
         "typ": TOKEN_TYPE,
         "iat": now,
+        "nbf": now,
         "exp": now + timedelta(days=ttl_days),
+        "jti": secrets.token_hex(16),
     }
     return jwt.encode(payload, secret, algorithm=ALGORITHM)
 
 
 def decode_access_token(token: str, secret: str) -> dict[str, Any]:
     try:
-        payload = jwt.decode(token, secret, algorithms=[ALGORITHM])
+        payload = jwt.decode(
+            token,
+            secret,
+            algorithms=[ALGORITHM],
+            options={"require": ["exp", "iat", "sub", "typ"]},
+        )
     except jwt.PyJWTError as exc:
         raise JwtError("invalid token") from exc
     if payload.get("typ") != TOKEN_TYPE:
